@@ -1,0 +1,15 @@
+# Java / Maven
+target/
+*.class
+
+# Node / Vite
+node_modules/
+dist/
+*.log
+
+# Sistema
+.DS_Store
+
+# IntelliJ IDEA
+.idea/
+*.iml
